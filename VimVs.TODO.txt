@@ -1,0 +1,4 @@
+Vim
+c:\Program Files\Vim\vim72\gvim.exe
+--remote-silent +$(CurLine) "$(ItemPath)"
+$(SolutionDir)
