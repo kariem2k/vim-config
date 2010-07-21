@@ -83,12 +83,20 @@ let g:ragtag_global_maps = 1
 "--------------------------------------
 "FuzzyFInder
 "--------------------------------------
-let g:fuf_enumeratingLimit = 1000
+let g:fuf_enumeratingLimit = 50
 nnoremap <silent> <C-S-B> :FufBuffer<CR>
-nnoremap <C-S-N> :FufFile<CR>
+"nmap <C-S-N> :FufFile root<CR>
+nmap <C-S-N> :FufFile<CR>
 
 let g:fuf_abbrevMap = {
-    \   "/" : [ "**/", ],
+    \   "^root" : [ "**/", ],
+    \   "^/" : [ "**/", ],
+    \   "^m/" : [ "app/models/*", ],
+    \   "^v/" : [ "app/views/**/*", ],
+    \   "^c/" : [ "app/controllers/*", ],
+    \   "^h/" : [ "app/helpers/*", ],
+    \   "^cfg/" : [ "config/**/*", ],
+    \   "^pub/" : [ "public/**/*", ]
     \ } 
 
 "------------------------------------
