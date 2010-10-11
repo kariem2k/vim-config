@@ -89,14 +89,16 @@ nnoremap <silent> <C-S-B> :FufBuffer<CR>
 nmap <C-S-N> :FufFile<CR>
 
 let g:fuf_abbrevMap = {
-    \   "^root" : [ "**/", ],
+    \   "^r" : [ "**/", ],
     \   "^/" : [ "**/", ],
     \   "^m/" : [ "app/models/*", ],
     \   "^v/" : [ "app/views/**/*", ],
     \   "^c/" : [ "app/controllers/*", ],
     \   "^h/" : [ "app/helpers/*", ],
     \   "^cfg/" : [ "config/**/*", ],
-    \   "^pub/" : [ "public/**/*", ]
+    \   "^pub/" : [ "public/**/*", ], 
+    \   "^s/" : [ "src/**/*", ],
+    \   "^t/" : [ "test/**/*", ],
     \ } 
 
 "------------------------------------
@@ -105,8 +107,20 @@ let g:fuf_abbrevMap = {
 nnoremap <silent> <C-F4> :BD<CR>
 nnoremap <silent> <C-PageUp> :bnext<CR>
 nnoremap <silent> <C-PageDown> :bprev<CR>
-nmap _p <Plug>BufKillBd
+nnoremap <silent> <F5> :!./tests.sh<CR>
+nnoremap <expr> <CR> :call pumvisible() ? "" : "<CR>"
+imap <C-Space> <C-x><C-o>
+map <C-F12> :!ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .<CR> 
 
+let OmniCpp_NamespaceSearch = 1
+let OmniCpp_GlobalScopeSearch = 1
+let OmniCpp_ShowAccess = 1
+let OmniCpp_ShowPrototypeInAbbr = 1
+let OmniCpp_MayCompleteDot = 1 
+let OmniCpp_MayCompleteArrow = 1
+let OmniCpp_MayCompleteScope = 1
+let OmniCpp_DefaultNamespaces = ["std", "_GLIBCXX_STD"]
+set completeopt=longest,menuone
 "" --------------------
 "" MiniBufExpl
 "" --------------------
@@ -147,9 +161,8 @@ nmap _p <Plug>BufKillBd
 "" --------------------
 "" OmniCppComplete
 "" --------------------
-"" set Ctrl+j in insert mode, like VS.Net
-"imap <C-j> <C-X><C-O>
-"" :inoremap <expr> <CR> pumvisible() ? "\<c-y>" : "\<c-g>u\<CR>"
+
+"" 
 "" set completeopt as don't show menu and preview
 "set completeopt=menuone
 "" Popup menu hightLight Group
