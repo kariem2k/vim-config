@@ -66,7 +66,9 @@ noremap <c-kMinus> <c-X>
 "----------------------------------------
 autocmd BufNewFile,BufRead *.vb set ft=vbnet
 autocmd BufNewFile,BufRead *.nsh set ft=nsis
-
+au BufRead,BufNewFile *py,*pyw,*.c,*.h set tabstop=8
+au BufRead,BufNewFile *.py,*pyw set shiftwidth=4
+au BufRead,BufNewFile *.py,*.pyw set expandtab
 "-------------------------------------
 "NERDTree
 "-------------------------------------
