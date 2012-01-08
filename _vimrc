@@ -109,7 +109,7 @@ let g:fuf_abbrevMap = {
 nnoremap <silent> <C-F4> :BD<CR>
 nnoremap <silent> <C-PageUp> :bnext<CR>
 nnoremap <silent> <C-PageDown> :bprev<CR>
-nnoremap <silent> <F5> :!./tests.sh<CR>
+nnoremap <silent> <F5> :!./crun.sh<CR>
 nnoremap <expr> <CR> :call pumvisible() ? "" : "<CR>"
 imap <C-Space> <C-x><C-o>
 map <C-F12> :!ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .<CR> 
