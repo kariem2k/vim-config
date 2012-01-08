@@ -49,8 +49,8 @@ set softtabstop=4
 set autoindent
 set smartindent
 " set gfn=Courier_New:h10:cANSI
- colorscheme vibrantink
-" colorscheme rdark
+" colorscheme vibrantink
+ colorscheme rdark
 " colorscheme ir_black
 
 " au GUIEnter * simalt ~x
