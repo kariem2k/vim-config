@@ -48,6 +48,8 @@ set expandtab
 set softtabstop=4
 set autoindent
 set smartindent
+set noeb vb t_vb= "Disable audiobell
+set vb t_vb= "Disable audiobell
 " set gfn=Courier_New:h10:cANSI
 " colorscheme vibrantink
  colorscheme rdark
@@ -103,6 +105,27 @@ let g:fuf_abbrevMap = {
     \   "^t/" : [ "test/**/*", ],
     \ } 
 
+"-----------------------------------
+" Tags
+" To generate tags for something global like OpenGL or stl or anything, to
+" ~/.tags dir and it will be loaded
+" ctags -R --sort=yes --c++-kinds=+p --fields=+iaS --extra=+q --language-force=C++ -f ~/.tags/gl /usr/include/GL/" 
+"-----------------------------------
+set tags=./
+
+for f in split(glob('~/.tags/*'), '\n')
+    exec 'set tags+=' . f
+endfor
+
+function! UPDATE_TAGS()
+  let _f_ = expand("%:p")
+  let _cmd_ = '"ctags -R --c++-kinds=+pl --fields=+iaS --extra=+q ."'
+  let _resp = system(_cmd_)
+  unlet _cmd_
+  unlet _f_
+  unlet _resp
+endfunction
+"autocmd BufWritePost *.cpp,*.h,*.c call UPDATE_TAGS()
 "------------------------------------
 "General Mappings
 "------------------------------------
@@ -112,7 +135,7 @@ nnoremap <silent> <C-PageDown> :bprev<CR>
 nnoremap <silent> <F5> :!./crun.sh<CR>
 nnoremap <expr> <CR> :call pumvisible() ? "" : "<CR>"
 imap <C-Space> <C-x><C-o>
-map <C-F12> :!ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .<CR> 
+map <C-F12> :!ctags -R --c++-kinds=+pl --fields=+iaS --extra=+q .<CR> 
 
 let OmniCpp_NamespaceSearch = 1
 let OmniCpp_GlobalScopeSearch = 1
@@ -122,7 +145,8 @@ let OmniCpp_MayCompleteDot = 1
 let OmniCpp_MayCompleteArrow = 1
 let OmniCpp_MayCompleteScope = 1
 let OmniCpp_DefaultNamespaces = ["std", "_GLIBCXX_STD"]
-set completeopt=longest,menuone
+let OmniCpp_LocalSearchDecl = 1
+set completeopt=menuone,menu
 "" --------------------
 "" MiniBufExpl
 "" --------------------
