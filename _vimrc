@@ -137,6 +137,15 @@ nnoremap <expr> <CR> :call pumvisible() ? "" : "<CR>"
 imap <C-Space> <C-x><C-o>
 map <C-F12> :!ctags -R --c++-kinds=+pl --fields=+iaS --extra=+q .<CR> 
 
+"------------------------------------
+"Clang_Complete
+"------------------------------------
+let g:clang_snippets = 1
+let g:clang_snippets_engine = 'clang_complete'
+let g:clang_close_preview = 1
+let g:clang_periodic_quickfix = 1
+let g:clang_complete_copen = 1
+
 "" --------------------
 "" MiniBufExpl
 "" --------------------
