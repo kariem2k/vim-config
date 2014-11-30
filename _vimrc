@@ -50,7 +50,13 @@ set autoindent
 set smartindent
 set noeb vb t_vb= "Disable audiobell
 set vb t_vb= "Disable audiobell
-" set gfn=Courier_New:h10:cANSI
+if has("gui_gtk2")
+    set guifont=UbuntuMono\ 10
+elseif has("gui_macvim")
+    set guifont=Monospace\ 12
+elseif has("gui_win32")
+    set guifont=Monospace\ 10
+end
 " colorscheme vibrantink
  colorscheme rdark
 " colorscheme ir_black
