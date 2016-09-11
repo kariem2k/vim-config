@@ -29,6 +29,7 @@ function MyDiff()
   silent execute '!' . cmd . ' ' . opt . arg1 . ' ' . arg2 . ' > ' . arg3 . eq
 endfunction
 
+execute pathogen#infect()
 
 """
 " Customizations

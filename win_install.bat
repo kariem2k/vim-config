@@ -1,3 +1,4 @@
-rmdir /S /Q "C:\Program Files\Vim\vimfiles\"
-xcopy /R /Y _vimrc "C:\Program Files\Vim"
-xcopy /E /Y vimfiles "C:\Program Files\Vim\vimfiles\"
+rmdir /S /Q "%HOMEDRIVE%%HOMEPATH%\vimfiles\"
+mkdir "%HOMEDRIVE%%HOMEPATH%\vimfiles\"
+xcopy /R /Y _vimrc "%HOMEDRIVE%%HOMEPATH%"
+xcopy /E /Y vimfiles "%HOMEDRIVE%%HOMEPATH%\vimfiles\"
