@@ -1,36 +1,29 @@
 set nocompatible
 source $VIMRUNTIME/vimrc_example.vim
 source $VIMRUNTIME/mswin.vim
+runtime macros/matchit.vim
 behave mswin
 
+if has('win32')
+    let s:vim_files = expand('$HOME/vimfiles')
+else
+    let s:vim_files = expand('$HOME/.vim')
+endif
 
-set diffexpr=MyDiff()
-function MyDiff()
-  let opt = '-a --binary '
-  if &diffopt =~ 'icase' | let opt = opt . '-i ' | endif
-  if &diffopt =~ 'iwhite' | let opt = opt . '-b ' | endif
-  let arg1 = v:fname_in
-  if arg1 =~ ' ' | let arg1 = '"' . arg1 . '"' | endif
-  let arg2 = v:fname_new
-  if arg2 =~ ' ' | let arg2 = '"' . arg2 . '"' | endif
-  let arg3 = v:fname_out
-  if arg3 =~ ' ' | let arg3 = '"' . arg3 . '"' | endif
-  let eq = ''
-  if $VIMRUNTIME =~ ' '
-    if &sh =~ '\<cmd'
-      let cmd = '""' . $VIMRUNTIME . '\diff"'
-      let eq = '"'
-    else
-      let cmd = substitute($VIMRUNTIME, ' ', '" ', '') . '\diff"'
-    endif
-  else
-    let cmd = $VIMRUNTIME . '\diff'
-  endif
-  silent execute '!' . cmd . ' ' . opt . arg1 . ' ' . arg2 . ' > ' . arg3 . eq
-endfunction
 
 execute pathogen#infect()
+call plug#begin(s:vim_files . '/plugged')
+let fzf_dir = s:vim_files . '/.fzf'
 
+if has('win32')
+    Plug 'junegunn/fzf', { 'dir': fzf_dir } "Need to install it manually
+else
+    Plug 'junegunn/fzf', { 'dir': fzf_dir, 'do': './install --all' }
+endif
+Plug 'junegunn/fzf.vim'
+Plug 'tpope/vim-fugitive'
+Plug 'vim-scripts/dbext.vim'
+call plug#end()
 """
 " Customizations
 
@@ -43,26 +36,35 @@ set incsearch
 set showmatch
 set nohlsearch
 set tabstop=4
-
 set shiftwidth=4
 set expandtab
 set softtabstop=4
 set autoindent
 set smartindent
+set keymodel-=stopsel
+set encoding=utf-8   
+"set rop=type:directx,gamma:1.0,contrast:0.5,level:1,geom:1,renmode:4,taamode:1
 set noeb vb t_vb= "Disable audiobell
 set vb t_vb= "Disable audiobell
+set laststatus=2
+set number 
+set relativenumber
+
+syntax enable
+
 if has("gui_gtk2")
     set guifont=UbuntuMono\ 10
 elseif has("gui_macvim")
     set guifont=Monospace\ 12
 elseif has("gui_win32")
-    set guifont=Monospace\ 10
+    set guifont=Powerline\ consolas:h10:cANSI
 end
-" colorscheme vibrantink
- colorscheme rdark
-" colorscheme ir_black
+"
+set t_Co=256   " This is may or may not needed.
 
-" au GUIEnter * simalt ~x
+let &backupdir = s:vim_files . '/backup,.'
+let &directory = s:vim_files . '/temp//,.'
+let &undodir = s:vim_files . '/undo,.'
 
 "---------------------------------------
 "Increase/Decrease Numbers
@@ -140,11 +142,9 @@ endfunction
 nnoremap <silent> <C-F4> :BD<CR>
 nnoremap <silent> <C-PageUp> :bnext<CR>
 nnoremap <silent> <C-PageDown> :bprev<CR>
-nnoremap <silent> <F5> :!./crun.sh<CR>
-nnoremap <expr> <CR> :call pumvisible() ? "" : "<CR>"
 imap <C-Space> <C-x><C-o>
 map <C-F12> :!ctags -R --c++-kinds=+pl --fields=+iaS --extra=+q .<CR> 
-
+set nostartofline
 "------------------------------------
 "Clang_Complete
 "------------------------------------
@@ -154,6 +154,22 @@ let g:clang_close_preview = 1
 let g:clang_periodic_quickfix = 1
 let g:clang_complete_copen = 1
 
+""---------------------------------------------
+"CtrlP
+""--------------------------------------------
+let g:ctrlp_root_markers = ['.projectrootdir']
+
+"Filetypes
+let g:sql_type_default = "sqlserver" 
+au BufNewFile,BufRead *.ser set filetype=sqlserver 
+
+let g:sw_exe = s:vim_files . '/3rdparty/workbench/sqlwbconsole.exe'
+let g:sw_tmp = s:vim_files . '/3rdparty/tmp'
+""DBExt
+"autocmd! VimEnter *.sql DBCompleteTables
+"autocmd! VimEnter *.sql DBCompleteViews
+"autocmd! VimEnter *.sql DBCompleteProcedures
+
 "" --------------------
 "" MiniBufExpl
 "" --------------------
@@ -161,36 +177,80 @@ let g:clang_complete_copen = 1
 "let g:miniBufExplModSelTarget = 1 " If you use other explorers like TagList you can (As of 6.2.8) set it at 1:
 "let g:miniBufExplUseSingleClick = 1 " If you would like to single click on tabs rather than double clicking on them to goto the selected buffer.
 "let g:miniBufExplMaxSize = 1 " <max lines: defualt 0> setting this to 0 will mean the window gets as big as needed to fit all your buffers.
-""let g:miniBufExplForceSyntaxEnable = 1 " There is a Vim bug that can cause buffers to show up without their highlighting. The following setting will cause MBE to
-""let g:miniBufExplorerMoreThanOne = 1 " Setting this to 0 will cause the MBE window to be loaded even
+"let g:miniBufExplForceSyntaxEnable = 1 " There is a Vim bug that can cause buffers to show up without their highlighting. The following setting will cause MBE to
+"let g:miniBufExplorerMoreThanOne = 1 " Setting this to 0 will cause the MBE window to be loaded even
 "let g:miniBufExplMapCTabSwitchBufs = 1
 "let g:miniBufExplMapWindowNavVim = 1 
-""let g:miniBufExplMapWindowNavArrows = 1
-"highlight MBENormal guibg=LightGray guifg=DarkGray
-"highlight MBEChanged guibg=Red guifg=DarkRed
-"highlight MBEVisibleNormal term=bold cterm=bold gui=bold guibg=Gray guifg=Black
-"highlight MBEVisibleChanged term=bold cterm=bold gui=bold guibg=DarkRed guifg=Black
+"let g:miniBufExplMapWindowNavArrows = 1
+"let g:miniBufExplSetUT = 1
+""hi MBENormal               guifg=#808080 guibg=fg
+"hi MBEChanged              guifg=#CD5907 guibg=fg
+"hi MBEVisibleNormal        guifg=#FFFFFF guibg=#d8d4d4
+"hi MBEVisibleChanged       guifg=#F1266F guibg=#d8d4d4
+"hi MBEVisibleActiveNormal  guifg=#A6DB29 guibg=#382d2d
+"hi MBEVisibleActiveChanged guifg=#F1266F guibg=#382d2d
 
 ""---------------------
-"" TagList
-"" --------------------
-"" F4: Switch on/off TagList
-"nnoremap <silent> <F4> :TlistToggle<CR>
-""let Tlist_Ctags_Cmd = $VIM.'/vimfiles/ctags.exe' " location of ctags tool
-"let Tlist_Show_One_File = 1 " Displaying tags for only one file~
-"let Tlist_Exist_OnlyWindow = 1 " if you are the last, kill yourself
-"let Tlist_Sort_Type = "order" " sort by order or name
-"let Tlist_Display_Prototype = 0 " do not show prototypes and not tags in the taglist window.
-"let Tlist_Compact_Format = 1 " Remove extra information and blank lines from the taglist window.
-"let Tlist_GainFocus_On_ToggleOpen = 1 " Jump to taglist window on open.
-"let Tlist_Display_Tag_Scope = 1 " Show tag scope next to the tag name.
-"let Tlist_Close_On_Select = 1 " Close the taglist window when a file or tag is selected.
-"let Tlist_Enable_Fold_Column = 0 " Don't Show the fold indicator column in the taglist window.
-"let Tlist_WinWidth = 40
-"" let Tlist_Ctags_Cmd = 'ctags --c++-kinds=+p --fields=+iaS --extra=+q --languages=c++'
-"" very slow, so I disable this
-"" let Tlist_Process_File_Always = 1 " To use the :TlistShowTag and the :TlistShowPrototype commands without the taglist window and the taglist menu, you should set this variable to 1.
+""rg
+""---------------------
+let g:rg_command = 	'rg --vimgrep -i'
 
+
+let g:rainbow_active = 1
+let g:rainbow_conf = {
+\	'guifgs': ['royalblue3', 'darkorange3', 'seagreen3', 'firebrick'],
+\	'ctermfgs': ['lightblue', 'lightyellow', 'lightcyan', 'lightmagenta'],
+\	'operators': '_,_',
+\	'parentheses': ['start=/(/ end=/)/ fold', 'start=/\[/ end=/\]/ fold', 'start=/{/ end=/}/ fold'],
+\	'separately': {
+\		'*': {},
+\		'tex': {
+\			'parentheses': ['start=/(/ end=/)/', 'start=/\[/ end=/\]/'],
+\		},
+\		'sql': {
+\			'parentheses': ['start=/\c^\s*begin\>/ fold end=/\c^\s*end\W*$/ fold'],
+\		},
+\		'lisp': {
+\			'guifgs': ['royalblue3', 'darkorange3', 'seagreen3', 'firebrick', 'darkorchid3'],
+\		},
+\		'vim': {
+\			'parentheses': ['start=/(/ end=/)/', 'start=/\[/ end=/\]/', 'start=/{/ end=/}/ fold', 'start=/(/ end=/)/ containedin=vimFuncBody', 'start=/\[/ end=/\]/ containedin=vimFuncBody', 'start=/{/ end=/}/ fold containedin=vimFuncBody'],
+\		},
+\		'html': {
+\			'parentheses': ['start=/\v\<((area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)[ >])@!\z([-_:a-zA-Z0-9]+)(\s+[-_:a-zA-Z0-9]+(\=("[^"]*"|'."'".'[^'."'".']*'."'".'|[^ '."'".'"><=`]*))?)*\>/ end=#</\z1># fold'],
+\		},
+\		'css': 0,
+\	}
+\}
+
+
+let g:airline_theme='papercolor'
+let g:airline_powerline_fonts = 1
+let g:airline#extensions#tabline#enabled = 1
+if !exists('g:airline_symbols')
+  let g:airline_symbols = {}
+endi
+"For consolas font on windows
+let g:airline_symbols.space = "\ua0"
+let g:airline_left_sep = "\u2b80" "use double quotes here
+let g:airline_left_alt_sep = "\u2b81"
+let g:airline_right_sep = "\u2b82"
+let g:airline_right_alt_sep = "\u2b83"
+let g:airline_symbols.branch = "\u2b60"
+let g:airline_symbols.readonly = "\u2b64"
+let g:airline_symbols.linenr = "\u2b61"
 "
-"
-" Command: "C:\Program Files\vim\vim72\gvim.exe" -p --remote-tab-silent "%1" "%*"
+if has('gui_running')
+    set background=dark
+else
+    set background=dark
+endif
+colorscheme papercolor
+
+
+""-------------------------------------------------------------------------
+source ~/_vimrc_machinespecific.vim
+
+if has('win32')
+    au GUIEnter * simalt ~x
+endif

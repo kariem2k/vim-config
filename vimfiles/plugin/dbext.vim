@@ -1,11 +1,11 @@
 " dbext.vim - Commn Database Utility
-" Copyright (C) 2002-7, Peter Bagyinszki, David Fishburn
+" Copyright (C) 2002-16, Peter Bagyinszki, David Fishburn
 " ---------------------------------------------------------------
-" Version:       11.01
+" Version:       25.00
 " Maintainer:    David Fishburn <dfishburn dot vim at gmail dot com>
 " Authors:       Peter Bagyinszki <petike1 at dpg dot hu>
 "                David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2009 Aug 27
+" Last Modified: 2017 Jan 27
 " Based On:      sqlplus.vim (author: Jamis Buck)
 " Created:       2002-05-24
 " Homepage:      http://vim.sourceforge.net/script.php?script_id=356
@@ -13,9 +13,7 @@
 "                Hari Krishna Dara <hari_vim at yahoo dot com>
 "                Ron Aaron
 "
-" SourceForge:  $Revision: 1.38 $
-"
-" Help:         :h dbext.txt 
+" Help:         :h dbext.txt
 "
 " This program is free software; you can redistribute it and/or modify
 " it under the terms of the GNU General Public License as published by
@@ -31,14 +29,22 @@
 " along with this program; if not, write to the Free Software
 " Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
-if exists('g:loaded_dbext') || &cp
+if exists('g:loaded_dbext')
     finish
 endif
 if v:version < 700
     echomsg "dbext: Version 4.00 or higher requires Vim7.  Version 3.50 can stil be used with Vim6."
     finish
 endif
-let g:loaded_dbext = 1101
+if v:version < 702
+    echomsg "dbext: Version 22.00 or higher requires Vim7.2 or higher.  Version 21.00 can stil be used with Vim 7.1 and lower."
+    finish
+endif
+let g:loaded_dbext = 2500
+
+" Turn on support for line continuations when creating the script
+let s:cpo_save = &cpo
+set cpo&vim
 
 if !exists('g:dbext_default_menu_mode')
     let g:dbext_default_menu_mode = 3
@@ -48,14 +54,40 @@ if !exists('g:dbext_rows_affected')
     let g:dbext_rows_affected = 0
 endif
 
+if !exists('g:dbext_map_prefix')
+    let g:dbext_map_prefix = '<Leader>s'
+endif
+
+if !exists('g:dbext_default_usermaps')
+    let g:dbext_default_usermaps = 1
+endif
+
+if !exists('g:dbext_map_or_cmd')
+    if g:dbext_default_usermaps != 0
+        let g:dbext_map_or_cmd = 'map'
+    else
+        let g:dbext_map_or_cmd = 'cmd'
+    endif
+endif
+
+if !exists('g:dbext_default_use_jobs')
+    let g:dbext_default_use_jobs = 1
+endif
+
 " Commands {{{
 command! -nargs=+ DBExecSQL         :call dbext#DB_execSql(<q-args>)
 command! -nargs=+ DBExecSQLTopX     :call dbext#DB_execSqlTopX(<q-args>)
-command! -nargs=0 DBConnect         :call dbext#DB_connect()
-command! -nargs=0 DBDisconnect      :call dbext#DB_disconnect()
+command! -nargs=* DBConnect         :call dbext#DB_connect(<q-args>)
+command! -nargs=* DBDisconnect      :call dbext#DB_disconnect(<q-args>)
+command! -nargs=* DBDisconnectAll   :call dbext#DB_disconnectAll()
 command! -nargs=0 DBCommit          :call dbext#DB_commit()
 command! -nargs=0 DBRollback        :call dbext#DB_rollback()
 command! -nargs=0 DBListConnections :call dbext#DB_getListConnections()
+command! -nargs=0 DBProfilesRefresh :call dbext#DB_buildLists()
+command! -nargs=* -complete=customlist,DB_completeJobStop DBJobStop         :call dbext#DB_jobStop(<q-args>)
+command! -nargs=0 DBJobStatus       :call dbext#DB_jobStatus()
+command! -nargs=0 DBJobTimerStop    :call dbext#DB_jobTimerStop()
+command! -nargs=0 DBJobTimerStart   :call dbext#DB_jobTimerStart()
 command! -range -nargs=0 DBExecRangeSQL <line1>,<line2>call dbext#DB_execRangeSql()
 command! -nargs=+ Call              :call dbext#DB_execSql("call " . <q-args>)
 command! -nargs=+ -complete=customlist,dbext#DB_completeTables Select            :call dbext#DB_execSql("select " . <q-args>)
@@ -65,15 +97,15 @@ command! -nargs=+ -complete=customlist,dbext#DB_completeTables Delete           
 command! -nargs=+ -complete=customlist,dbext#DB_completeTables Drop              :call dbext#DB_execSql("drop " . <q-args>)
 command! -nargs=+ -complete=customlist,dbext#DB_completeTables Alter             :call dbext#DB_execSql("alter " . <q-args>)
 command! -nargs=+ Create            :call dbext#DB_execSql("create " . <q-args>)
-command! -nargs=1 DBSetOption       :call dbext#DB_setMultipleOptions(<q-args>)
-command! -nargs=? DBGetOption       :echo DB_listOption(<q-args>)
+" command! -nargs=1 DBSetOption       :call dbext#DB_setMultipleOptions(<q-args>)
+" command! -nargs=? DBGetOption       :echo DB_listOption(<q-args>)
 " command! -nargs=* -complete=customlist,dbext#DB_completeSettings DBSetOption :call dbext#DB_setMultipleOptions(<q-args>)
 command! -nargs=* -complete=customlist,dbext#DB_completeSettings DBSetOption :call dbext#DB_setMultipleOptions(<q-args>)
 command! -nargs=* -complete=customlist,dbext#DB_completeSettings DBGetOption :echo DB_listOption(<q-args>)
 command! -range -nargs=0 -bang DBVarRangeAssign <line1>,<line2>call dbext#DB_sqlVarRangeAssignment(<bang>0)
 command! -nargs=0 DBListVar         :call dbext#DB_sqlVarList()
-command! -nargs=1 -bang DBSetVar    :call dbext#DB_sqlVarAssignment(<bang>0, 'set '.<q-args>)
-command! -nargs=* -complete=customlist,dbext#DB_completeVariable DBSetVar :call dbext#DB_sqlVarAssignment(<bang>0, 'set '.<q-args>)
+"command! -nargs=1 -bang DBSetVar    :call dbext#DB_sqlVarAssignment(<bang>0, 'set '.<q-args>)
+command! -nargs=* -bang -complete=customlist,dbext#DB_completeVariable DBSetVar :call dbext#DB_sqlVarAssignment(<bang>0, 'set '.<q-args>)
 
 if !exists(':DBExecVisualSQL')
     command! -nargs=0 -range DBExecVisualSQL :call dbext#DB_execSql(DB_getVisualBlock())
@@ -172,7 +204,7 @@ if !exists(':DBListView')
                 \ :call dbext#DB_getListView(<f-args>)
     nmap <unique> <script> <Plug>DBListView
                 \ :DBListView<CR>
-endif 
+endif
 if !exists(':DBCompleteTables')
     command! -nargs=0 -bang DBCompleteTables
                 \ :call DB_DictionaryCreate( <bang>0, 'Table' )
@@ -217,133 +249,113 @@ if !exists(':DBResultsToggleResize')
 end
 "}}}
 " Mappings {{{
-if !hasmapto('<Plug>DBExecVisualSQL') && !hasmapto('<Leader>se', 'v')
-    xmap <unique> <Leader>se <Plug>DBExecVisualSQL
-endif
-if !hasmapto('<Plug>DBExecVisualTopXSQL') && !hasmapto('<Leader>sE', 'v')
-    xmap <unique> <Leader>sE <Plug>DBExecVisualTopXSQL
-endif
-if !hasmapto('<Plug>DBExecSQLUnderCursor') && !hasmapto('<Leader>se', 'n')
-    nmap <unique> <Leader>se <Plug>DBExecSQLUnderCursor
-endif
-if !hasmapto('<Plug>DBExecSQLUnderTopXCursor') && !hasmapto('<Leader>sE', 'n')
-    nmap <unique> <Leader>sE <Plug>DBExecSQLUnderTopXCursor
-endif
-if !hasmapto('<Plug>DBExecSQL') && !hasmapto('<Leader>sq', 'n')
-    nmap <unique> <Leader>sq <Plug>DBExecSQL
-endif
-if !hasmapto('DBExecRangeSQL')
-    if !hasmapto('<Leader>sea', 'n')
-        nmap <unique> <silent> <Leader>sea :1,$DBExecRangeSQL<CR>
+if g:dbext_default_usermaps != 0
+    if maparg(g:dbext_map_prefix.'e', 'x') == ''
+        exec 'xmap <unique> '.g:dbext_map_prefix.'e <Plug>DBExecVisualSQL'
     endif
-    if !hasmapto('<Leader>sel', 'n')
-        nmap <unique> <silent> <Leader>sel :.,.DBExecRangeSQL<CR>
+    if maparg(g:dbext_map_prefix.'E', 'x') == ''
+        exec 'xmap <unique> '.g:dbext_map_prefix.'E <Plug>DBExecVisualTopXSQL'
     endif
-    if !hasmapto('<Leader>sep', 'n')
-        nmap <unique> <silent> <Leader>sep :'<,'>DBExecRangeSQL<CR>
+    if maparg(g:dbext_map_prefix.'e', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'e <Plug>DBExecSQLUnderCursor'
     endif
-endif
-if !hasmapto('<Plug>DBSelectFromTable')
-    if !hasmapto('<Leader>st', 'n')
-        nmap <unique> <Leader>st <Plug>DBSelectFromTable
+    if maparg(g:dbext_map_prefix.'E', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'E <Plug>DBExecSQLUnderTopXCursor'
     endif
-    if !hasmapto('<Leader>st', 'v')
-        xmap <unique> <silent> <Leader>st
-                    \ :<C-U>exec 'DBSelectFromTable "'.DB_getVisualBlock().'"'<CR>
+    if maparg(g:dbext_map_prefix.'q', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'q <Plug>DBExecSQL'
     endif
-endif
-if !hasmapto('<Plug>DBSelectFromTableWithWhere') && !hasmapto('<Leader>stw', 'n')
-    nmap <unique> <Leader>stw <Plug>DBSelectFromTableWithWhere
-endif
-if !hasmapto('<Plug>DBSelectFromTableAskName') && !hasmapto('<Leader>sta', 'n')
-    nmap <unique> <Leader>sta <Plug>DBSelectFromTableAskName
-endif
-if !hasmapto('<Plug>DBSelectFromTopXTable') && !hasmapto('<Leader>sT')
-    if !hasmapto('<Leader>sT', 'n')
-        nmap <unique> <Leader>sT <Plug>DBSelectFromTopXTable
+    if maparg(g:dbext_map_prefix.'ea', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix.'ea :1,$DBExecRangeSQL<CR>'
     endif
-    if !hasmapto('<Leader>sT', 'v')
-        xmap <unique> <silent> <Leader>sT
-                    \ :<C-U>exec 'DBSelectFromTableTopX "'.DB_getVisualBlock().'"'<CR>
+    if maparg(g:dbext_map_prefix.'el', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix.'el :.,.DBExecRangeSQL<CR>'
     endif
-endif
-if !hasmapto('<Plug>DBDescribeTable') && !hasmapto('<Leader>sdt')
-    if !hasmapto('<Leader>sdt', 'n')
-        nmap <unique> <Leader>sdt <Plug>DBDescribeTable
+    if maparg(g:dbext_map_prefix.'ep', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix."ep :'<,'>".'DBExecRangeSQL<CR>'
     endif
-    if !hasmapto('<Leader>sdt', 'v')
-        xmap <unique> <silent> <Leader>sdt
-                    \ :<C-U>exec 'DBDescribeTable "'.DB_getVisualBlock().'"'<CR>
+    if maparg(g:dbext_map_prefix.'t', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'t <Plug>DBSelectFromTable'
     endif
-endif
-if !hasmapto('<Plug>DBDescribeTableAskName') && !hasmapto('<Leader>sdta', 'n')
-    nmap <unique> <Leader>sdta <Plug>DBDescribeTableAskName
-endif
-if !hasmapto('<Plug>DBDescribeProcedure') && !hasmapto('<Leader>sdp')
-    if !hasmapto('<Leader>sdp', 'n')
-        nmap <unique> <Leader>sdp <Plug>DBDescribeProcedure
+    if maparg(g:dbext_map_prefix.'t', 'x') == ''
+        " This concatenation should result in this xmap command:
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'t :<C-U>exec '.'"'."DBSelectFromTable '".'".DB_getVisualBlock()."'."'".'"'.'<CR>'
     endif
-    if !hasmapto('<Leader>sdp', 'v')
-        xmap <unique> <silent> <Leader>sdp
-                    \ :<C-U>exec 'DBDescribeProcedure "'.DB_getVisualBlock().'"'<CR>
+    if maparg(g:dbext_map_prefix.'tw', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'tw <Plug>DBSelectFromTableWithWhere'
     endif
-endif
-if !hasmapto('<Plug>DBDescribeProcedureAskName') && !hasmapto('<Leader>sdpa', 'n')
-    nmap <unique> <Leader>sdpa <Plug>DBDescribeProcedureAskName
-endif
-if !hasmapto('<Plug>DBPromptForBufferParameters') && !hasmapto('<Leader>sbp', 'n')
-    nmap <unique> <Leader>sbp <Plug>DBPromptForBufferParameters
-endif
-if !hasmapto('<Plug>DBListColumn') && !hasmapto('<Leader>slc')
-    if !hasmapto('<Leader>slc', 'n')
-        nmap <unique> <Leader>slc <Plug>DBListColumn
+    if maparg(g:dbext_map_prefix.'ta', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'ta <Plug>DBSelectFromTableAskName'
     endif
-    if !hasmapto('<Leader>slc', 'v')
-        xmap <unique> <silent> <Leader>slc
-                    \ :<C-U>exec 'DBListColumn "'.DB_getVisualBlock().'"'<CR>
+    if maparg(g:dbext_map_prefix.'T', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'T <Plug>DBSelectFromTopXTable'
     endif
-endif
-if !hasmapto('<Plug>DBListTable') && !hasmapto('<Leader>slt', 'n')
-    nmap <unique> <Leader>slt <Plug>DBListTable
-endif
-if !hasmapto('<Plug>DBListProcedure') && !hasmapto('<Leader>slp', 'n')
-    nmap <unique> <Leader>slp <Plug>DBListProcedure
-endif
-if !hasmapto('<Plug>DBListView') && !hasmapto('<Leader>slv', 'n')
-    nmap <unique> <Leader>slv <Plug>DBListView
-endif
-if !hasmapto('<Plug>DBListColumn') && !hasmapto('<Leader>stcl')
-    if !hasmapto('<Leader>stcl', 'n')
-        nmap <unique> <Leader>stcl <Plug>DBListColumn
+    if maparg(g:dbext_map_prefix.'T', 'x') == ''
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'T :<C-U>exec '.'"'."DBSelectFromTableTopX '".'".DB_getVisualBlock()."'."'".'"'.'<CR>'
     endif
-    if !hasmapto('<Leader>stcl', 'v')
-        xmap <unique> <silent> <Leader>stcl
-                    \ :<C-U>exec 'DBListColumn "'.DB_getVisualBlock().'"'<CR>
+    if maparg(g:dbext_map_prefix.'dt', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'dt <Plug>DBDescribeTable'
     endif
-endif
-if !hasmapto('<Plug>DBHistory') && !hasmapto('<Leader>sh', 'n')
-    nmap <unique> <Leader>sh <Plug>DBHistory
-endif
-if !hasmapto('<Plug>DBOrientationToggle') && !hasmapto('<Leader>so', 'n')
-    nmap <unique> <Leader>so <Plug>DBOrientationToggle
-endif
-if !hasmapto('DBVarRangeAssign')
-    if !hasmapto('<Leader>sas', 'n')
-        nmap <unique> <silent> <Leader>sas :1,$DBVarRangeAssign<CR>
+    if maparg(g:dbext_map_prefix.'dt', 'x') == ''
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'dt :<C-U>exec '.'"'."DBDescribeTable '".'".DB_getVisualBlock()."'."'".'"'.'<CR>'
     endif
-    if !hasmapto('<Leader>sal', 'n')
-        nmap <unique> <silent> <Leader>sal :.,.DBVarRangeAssign<CR>
+    if maparg(g:dbext_map_prefix.'dta', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'dta <Plug>DBDescribeTableAskName'
     endif
-    if !hasmapto('<Leader>sap', 'n')
-        nmap <unique> <silent> <Leader>sap :'<,'>DBVarRangeAssign<CR>
+    if maparg(g:dbext_map_prefix.'dp', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'dp <Plug>DBDescribeProcedure'
     endif
-    if !hasmapto('<Leader>sa', 'v')
-        xmap <unique> <silent> <Leader>sa :DBVarRangeAssign<CR>
+    if maparg(g:dbext_map_prefix.'dp', 'x') == ''
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'dp :<C-U>exec '.'"'."DBDescribeProcedure '".'".DB_getVisualBlock()."'."'".'"'.'<CR>'
     endif
-endif
-if !hasmapto('DBListVar')
-    if !hasmapto('<Leader>slr', 'n')
-        nmap <unique> <silent> <Leader>slr :DBListVar<CR>
+    if maparg(g:dbext_map_prefix.'dpa', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'dpa <Plug>DBDescribeProcedureAskName'
+    endif
+    if maparg(g:dbext_map_prefix.'bp', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'bp <Plug>DBPromptForBufferParameters'
+    endif
+    if maparg(g:dbext_map_prefix.'lc', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'lc <Plug>DBListColumn'
+    endif
+    if maparg(g:dbext_map_prefix.'lc', 'x') == ''
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'lc :<C-U>exec '.'"'."DBListColumn '".'".DB_getVisualBlock()."'."'".'"'.'<CR>'
+    endif
+    if maparg(g:dbext_map_prefix.'lt', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'lt <Plug>DBListTable'
+    endif
+    if maparg(g:dbext_map_prefix.'lp', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'lp <Plug>DBListProcedure'
+    endif
+    if maparg(g:dbext_map_prefix.'lv', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'lv <Plug>DBListView'
+    endif
+    if maparg(g:dbext_map_prefix.'tcl', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'tcl <Plug>DBListColumn'
+    endif
+    if maparg(g:dbext_map_prefix.'tcl', 'x') == ''
+        " exec 'xmap <unique> <silent> <Leader>stcl :<C-U>exec '."'".'DBListColumn "'."'".'.DB_getVisualBlock().'."'".'"'."'".'<CR>'
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'tcl :<C-U>exec '.'"'."DBListColumn '".'".DB_getVisualBlock()."'."'".'"'.'<CR>'
+    endif
+    if maparg(g:dbext_map_prefix.'h', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'h <Plug>DBHistory'
+    endif
+    if maparg(g:dbext_map_prefix.'o', 'n') == ''
+        exec 'nmap <unique> '.g:dbext_map_prefix.'o <Plug>DBOrientationToggle'
+    endif
+    if maparg(g:dbext_map_prefix.'as', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix.'as :1,$DBVarRangeAssign<CR>'
+    endif
+    if maparg(g:dbext_map_prefix.'al', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix.'al :.,.DBVarRangeAssign<CR>'
+    endif
+    if maparg(g:dbext_map_prefix.'ap', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix.'ap :'."'<,'>".'DBVarRangeAssign<CR>'
+    endif
+    if maparg(g:dbext_map_prefix.'a', 'x') == ''
+        exec 'xmap <unique> <silent> '.g:dbext_map_prefix.'a :DBVarRangeAssign<CR>'
+    endif
+    if maparg(g:dbext_map_prefix.'lr', 'n') == ''
+        exec 'nmap <unique> <silent> '.g:dbext_map_prefix.'lr :DBListVar<CR>'
     endif
 endif
 "}}}
@@ -363,101 +375,123 @@ if has("gui_running") && has("menu") && g:dbext_default_menu_mode != 0
     endif
     let leader = escape(leader, '\')
 
-    exec 'vnoremenu <script> '.menuRoot.'.Execute\ SQL\ (Visual\ selection)<TAB>'.leader.'se :DBExecVisualSQL<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ (Under\ cursor)<TAB>'.leader.'se  :DBExecSQLUnderCursor<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Execute\ SQL\ TopX\ (Visual\ selection)<TAB>'.leader.'sE  :DBExecVisualSQLTopX<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ TopX\ (Under\ cursor)<TAB>'.leader.'sE  :DBExecSQLUnderCursorTopX<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st  :DBSelectFromTable<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st  <C-O>:DBSelectFromTable<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st  :<C-U>exec ''DBSelectFromTable "''.DB_getVisualBlock().''"''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  :DBSelectFromTableTopX<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  <C-O>:DBSelectFromTableTopX<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  :<C-U>exec ''DBSelectFromTableTopX "''.DB_getVisualBlock().''"''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Where<TAB>'.leader.'stw  :DBSelectFromTableWithWhere<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ Where<TAB>'.leader.'stw  <C-O>:DBSelectFromTableWithWhere<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Ask<TAB>'.leader.'sta  :DBSelectFromTableAskName<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ Ask<TAB>'.leader.'sta  <C-O>:DBSelectFromTableAskName<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  :DBDescribeTable<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  <C-O>:DBDescribeTable<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  :<C-U>exec ''DBDescribeTable "''.DB_getVisualBlock().''"''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Describe\ Table\ Ask<TAB>'.leader.'stda  :DBDescribeTableAskName<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Describe\ Table\ Ask<TAB>'.leader.'stda  <C-O>:DBDescribeTableAskName<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  :DBDescribeProcedure<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  <C-O>:DBDescribeProcedure<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  :<C-U>exec ''DBDescribeProcedure "''.DB_getVisualBlock().''"''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Describe\ Procedure\ Ask<TAB>'.leader.'sdpa  :DBDescribeProcedureAskName<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Describe\ Procedure\ Ask<TAB>'.leader.'sdpa  <C-O>:DBDescribeProcedureAskName<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Prompt\ Connect\ Info<TAB>'.leader.'sbp  :DBPromptForBufferParameters<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  :DBListColumn<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  <C-O>:DBListColumn<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  :<C-U>exec ''DBListColumn "''.DB_getVisualBlock().''"''<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Table\ List<TAB>'.leader.'slt  :DBListTable<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Table\ List<TAB>'.leader.'slt  <C-O>:DBListTable<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Procedure\ List<TAB>'.leader.'slp  :DBListProcedure<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.Procedure\ List<TAB>'.leader.'slp  <C-O>:DBListProcedure<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.View\ List<TAB>'.leader.'slv  :DBListView<CR>'
-    exec 'inoremenu <script> '.menuRoot.'.View\ List<TAB>'.leader.'slv  <C-O>:DBListView<CR>'
-    exec 'vnoremenu <script> '.menuRoot.'.Assign\ Variable\ (Visual\ selection)<TAB>'.leader.'sa :DBVarRangeAssign<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Assign\ Variable\ (Current\ line)<TAB>'.leader.'sal :.,.DBVarRangeAssign<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.List\ Variables<TAB>'.leader.'svl :DBListVar<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Complete\ Tables :DBCompleteTables<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Complete\ Procedures :DBCompleteProcedures<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.Complete\ Views :DBCompleteViews<CR>'
-    exec 'noremenu  <script> '.menuRoot.'.List\ Connections\ (DBI) :DBListConnections<CR>'
+    if g:dbext_map_or_cmd == 'map'
+        exec 'vnoremenu <script> '.menuRoot.'.Execute\ SQL\ (Visual\ selection)<TAB>'.leader.'se :DBExecVisualSQL<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ Previous\ Visual\ Range<TAB>'.leader.'sep  :'."'<,'>DBExecRangeSQL".'<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ All<TAB>'.leader.'sea  :1,$DBExecRangeSQL<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ Line<TAB>'.leader.'sel  :.,.DBExecRangeSQL<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ (Under\ cursor)<TAB>'.leader.'se  :call feedkeys("'.leader.'se")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Execute\ SQL\ TopX\ (Visual\ selection)<TAB>'.leader.'sE  :DBExecVisualSQLTopX<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ TopX\ (Under\ cursor)<TAB>'.leader.'sE  :call feedkeys("'.leader.'sE")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st   :call feedkeys("'.leader.'st")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st   <C-O>:silent call feedkeys("<C-O>'.leader.'st")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st   :silent <C-U>call feedkeys("gv'.leader.'st")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  :call feedkeys("'.leader.'sT")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  <C-O>:silent call feedkeys("<C-O>'.leader.'sT")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  :<C-U>exec ''DBSelectFromTableTopX "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Where<TAB>'.leader.'stw  :call feedkeys("'.leader.'stw")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ Where<TAB>'.leader.'stw  <C-O>:silent call feedkeys("<C-O>'.leader.'stw")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Ask<TAB>'.leader.'sta  :call feedkeys("'.leader.'sta")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ Ask<TAB>'.leader.'sta  <C-O>:silent call feedkeys("<C-O>'.leader.'sta")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  :call feedkeys("'.leader.'sdt")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  <C-O>:silent call feedkeys("<C-O>'.leader.'sdt")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  :<C-U>exec ''DBDescribeTable "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Table\ Ask<TAB>'.leader.'sdta  :call feedkeys("'.leader.'sdta")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  :call feedkeys("'.leader.'sdp")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  <C-O>:silent call feedkeys("<C-O>'.leader.'sdp")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  :<C-U>exec ''DBDescribeProcedure "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Procedure\ Ask<TAB>'.leader.'sdpa  :call feedkeys("'.leader.'sdpa")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Describe\ Procedure\ Ask<TAB>'.leader.'sdpa  <C-O>:silent call feedkeys("<C-O>'.leader.'sdpa")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Prompt\ Connect\ Info<TAB>'.leader.'sbp  :call feedkeys("'.leader.'sbp")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  :call feedkeys("'.leader.'slc")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  <C-O>:silent call feedkeys("<C-O>'.leader.'slc")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  :<C-U>exec ''DBListColumn "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Table\ List<TAB>'.leader.'slt  :call feedkeys("'.leader.'slt")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Table\ List<TAB>'.leader.'slt  <C-O>:silent call feedkeys("<C-O>'.leader.'slt")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Procedure\ List<TAB>'.leader.'slp  :call feedkeys("'.leader.'slp")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Procedure\ List<TAB>'.leader.'slp  <C-O>:silent call feedkeys("<C-O>'.leader.'slp")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.View\ List<TAB>'.leader.'slv  :call feedkeys("'.leader.'slv")<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.View\ List<TAB>'.leader.'slv  <C-O>:silent call feedkeys("<C-O>'.leader.'slv")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Assign\ Variable\ (Visual\ selection)<TAB>'.leader.'sa :DBVarRangeAssign<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Assign\ Variable\ (Current\ line)<TAB>'.leader.'sal :.,.DBVarRangeAssign<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.List\ Variables<TAB>'.leader.'slr :call feedkeys("'.leader.'slr")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Complete\ Tables :DBCompleteTables<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Complete\ Procedures :DBCompleteProcedures<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Complete\ Views :DBCompleteViews<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.List\ Connections\ (DBI) :DBListConnections<CR>'
+    else
+        exec 'vnoremenu <script> '.menuRoot.'.Execute\ SQL\ (Visual\ selection)<TAB>'.leader.'se :DBExecVisualSQL<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ (Under\ cursor)<TAB>'.leader.'se  :DBExecSQLUnderCursor<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Execute\ SQL\ TopX\ (Visual\ selection)<TAB>'.leader.'sE  :DBExecVisualSQLTopX<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Execute\ SQL\ TopX\ (Under\ cursor)<TAB>'.leader.'sE  :DBExecSQLUnderCursorTopX<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st  :DBSelectFromTable<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st  <C-O>:DBSelectFromTable<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Select\ Table<TAB>'.leader.'st  :<C-U>exec ''DBSelectFromTable "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Map<TAB>'.leader.'st   :call feedkeys(",st")<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Select\ Table\ Map<TAB>'.leader.'st   :silent <C-U>call feedkeys("gv,st")<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  :DBSelectFromTableTopX<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  <C-O>:DBSelectFromTableTopX<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Select\ Table\ TopX<TAB>'.leader.'sT  :<C-U>exec ''DBSelectFromTableTopX "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Where<TAB>'.leader.'stw  :DBSelectFromTableWithWhere<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ Where<TAB>'.leader.'stw  <C-O>:DBSelectFromTableWithWhere<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Select\ Table\ Ask<TAB>'.leader.'sta  :DBSelectFromTableAskName<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Select\ Table\ Ask<TAB>'.leader.'sta  <C-O>:DBSelectFromTableAskName<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  :DBDescribeTable<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  <C-O>:DBDescribeTable<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Describe\ Table<TAB>'.leader.'sdt  :<C-U>exec ''DBDescribeTable "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Table\ Ask<TAB>'.leader.'sdta  :DBDescribeTableAskName<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  :DBDescribeProcedure<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  <C-O>:DBDescribeProcedure<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Describe\ Procedure<TAB>'.leader.'sdp  :<C-U>exec ''DBDescribeProcedure "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Describe\ Procedure\ Ask<TAB>'.leader.'sdpa  :DBDescribeProcedureAskName<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Describe\ Procedure\ Ask<TAB>'.leader.'sdpa  <C-O>:DBDescribeProcedureAskName<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Prompt\ Connect\ Info<TAB>'.leader.'sbp  :DBPromptForBufferParameters<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  :DBListColumn<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  <C-O>:DBListColumn<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Column\ List<TAB>'.leader.'slc  :<C-U>exec ''DBListColumn "''.DB_getVisualBlock().''"''<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Table\ List<TAB>'.leader.'slt  :DBListTable<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Table\ List<TAB>'.leader.'slt  <C-O>:DBListTable<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Procedure\ List<TAB>'.leader.'slp  :DBListProcedure<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.Procedure\ List<TAB>'.leader.'slp  <C-O>:DBListProcedure<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.View\ List<TAB>'.leader.'slv  :DBListView<CR>'
+        exec 'inoremenu <script> '.menuRoot.'.View\ List<TAB>'.leader.'slv  <C-O>:DBListView<CR>'
+        exec 'vnoremenu <script> '.menuRoot.'.Assign\ Variable\ (Visual\ selection)<TAB>'.leader.'sa :DBVarRangeAssign<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Assign\ Variable\ (Current\ line)<TAB>'.leader.'sal :.,.DBVarRangeAssign<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.List\ Variables<TAB>'.leader.'slr :DBListVar<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Complete\ Tables :DBCompleteTables<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Complete\ Procedures :DBCompleteProcedures<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.Complete\ Views :DBCompleteViews<CR>'
+        exec 'noremenu  <script> '.menuRoot.'.List\ Connections\ (DBI) :DBListConnections<CR>'
+    endif
 endif
 "}}}
-function! s:DB_checkModeline()
-    " Users can preset connection string options using Vim's modeline 
-    " features.
-    " For example, in a SQL file you could have the following:
-    "      -- dbext:profile=ASA_generic,user=bob
-    " See the Help for more details.
-    let rc = -1
-    if ((&modeline == '0') || (&modelines < 1))
-        return rc
-    endif
-    let saveSearch = @/
-    let pattern = 'dbext:'
-    let from_bottom_line = ((&modelines > line('$'))?1:(line('$')-&modelines))
-
-    let savePos = 'normal! '.line(".").'G'.col(".")."\<bar>"
-    silent execute "normal! 1G0\<bar>"
-    while search( pattern, 'W' )
-        if( (line(".") >= 1 && line(".") <= &modelines) ||
-                    \ (line(".") >= from_bottom_line)   )
-            call dbext#DB_checkModeline()
-        endif
-    endwhile
-
-    let @/ = saveSearch
-    execute savePos
-    return rc
-endfunction
-
-function! DB_getDictionaryName( which ) 
+function! DB_getDictionaryName( which )
     return dbext#DB_getDictionaryName( a:which )
-endfunction 
-function! DB_DictionaryCreate( drop_dict, which ) 
-   return dbext#DB_DictionaryCreate( a:drop_dict, a:which ) 
+endfunction
+function! DB_DictionaryCreate( drop_dict, which )
+   return dbext#DB_DictionaryCreate( a:drop_dict, a:which )
+endfunction
+function! DB_DictionaryDelete( which )
+   return dbext#DB_DictionaryDelete( a:which, bufnr('%') )
 endfunction
 
-function! DB_listOption(...) 
+function! DB_listOption(...)
     if a:0 == 0
-        return dbext#DB_listOption() 
+        return dbext#DB_listOption()
     elseif a:0 == 1
-        return dbext#DB_listOption(a:1) 
+        return dbext#DB_listOption(a:1)
     endif
 endfunction
 
-function! DB_getListColumn(...) 
-    if(a:0 > 0) 
+function! DB_getListColumn(...)
+    if(a:0 > 0)
         " Strip any leading or trailing spaces
         let table_name = substitute(a:1, '\s*\(.\+\)\s*', '\1', '')
     else
         let table_name = expand("<cword>")
     endif
 
-    if(a:0 > 1) 
+    if(a:0 > 1)
         " Suppress messages to the user, this prevents a echo
         " vim bug that offsets the output
         let silent_mode = a:2
@@ -465,7 +499,7 @@ function! DB_getListColumn(...)
         let silent_mode = 0
     endif
 
-    if(a:0 > 2) 
+    if(a:0 > 2)
         " Separate with newlines
         let use_newline_sep = a:3
     else
@@ -477,11 +511,20 @@ endfunction
 
 function! DB_getVisualBlock() range
     let save = @"
+    " Mark the current line to return to
+    let curline     = line("'<")
+    let curcol      = virtcol("'<")
+
     silent normal gvy
     let vis_cmd = @"
     let @" = save
+
+    " Return to previous location
+    " Accounting for beginning of the line
+    " call cursor(curline, curcol)
+
     return vis_cmd
-endfunction 
+endfunction
 
 "" Get buffer parameter value
 function! DB_execCmd(name, ...)
@@ -504,16 +547,62 @@ function! DB_execCmd(name, ...)
         let result = dbext#DB_execFuncWCheck(a:name, a:1, a:2, a:3, a:4)
     endif
     call dbext#DB_setMultipleOptions('use_result_buffer='.l:prev_use_result_buffer)
-    
+
     return result
+endfunction
+
+function! DB_checkModeline()
+    " Users can preset connection string options using Vim's modeline
+    " features.
+    " For example, in a SQL file you could have the following:
+    "      -- dbext:profile=ASA_generic,user=bob
+    " See the Help for more details.
+    " This function is a test to see if the autoload/dbext.vim should be
+    " loaded
+    let rc = -1
+    if ((&modeline == '0') || (&modelines < 1))
+        return rc
+    endif
+    let saveSearch = @/
+    let pattern = 'dbext:'
+    let from_bottom_line = ((&modelines > line('$'))?1:(line('$')-&modelines))
+
+    let saveLine = line(".")
+    let saveCol  = col(".")
+    call cursor(1, 1)
+    while search( pattern, 'W' )
+        if( (line(".") >= 1 && line(".") <= &modelines) ||
+                    \ (line(".") >= from_bottom_line)   )
+
+            " There is a dbext modeline, so call the
+            " autoload\dbext functions
+            let rc = dbext#DB_checkModeline()
+            break
+        else
+            if( line(".") < from_bottom_line )
+                call cursor(from_bottom_line, col("."))
+            endif
+        endif
+    endwhile
+
+    let @/ = saveSearch
+    call cursor(saveLine, saveCol)
+    return rc
+endfunction
+
+function! DB_completeJobStop(ArgLead, CmdLine, CursorPos)
+    return filter(["term", "hup", "quit", "int", "kill"], "v:val =~ '^" . a:ArgLead . "'")
 endfunction
 
 augroup dbext
     au!
     autocmd BufEnter    * if exists('g:loaded_dbext_auto') != 0 | exec "call dbext#DB_setTitle()" | endif
-    autocmd BufReadPost * if &modeline == 1 | call s:DB_checkModeline() | endif
+    autocmd BufReadPost * if &modeline == 1 | :keepjumps call DB_checkModeline() | endif
     autocmd BufDelete   * if exists('g:loaded_dbext_auto') != 0 | exec 'call dbext#DB_auBufDelete( expand("<abuf>") )' | endif
     autocmd VimLeavePre * if exists('g:loaded_dbext_auto') != 0 | exec 'call dbext#DB_auVimLeavePre()' | endif
 augroup END
+
+let &cpo = s:cpo_save
+unlet s:cpo_save
 
 " vim:fdm=marker:nowrap:ts=4:expandtab:
