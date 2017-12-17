@@ -23,6 +23,7 @@ endif
 Plug 'junegunn/fzf.vim'
 Plug 'tpope/vim-fugitive'
 Plug 'vim-scripts/dbext.vim'
+Plug 'Lokaltog/powerline', {'rtp': 'powerline/bindings/vim/'}
 call plug#end()
 """
 " Customizations
@@ -52,10 +53,13 @@ set relativenumber
 
 syntax enable
 
+let s:uname = system("uname")
 if has("gui_gtk2")
     set guifont=UbuntuMono\ 10
 elseif has("gui_macvim")
-    set guifont=Monospace\ 12
+    set guifont=Powerline\ consolas:h10:cANSI
+elseif s:uname == "Darwin\n"
+    set guifont=Powerline\ consolas:h10:cANSI
 elseif has("gui_win32")
     set guifont=Powerline\ consolas:h10:cANSI
 end
@@ -249,7 +253,9 @@ colorscheme papercolor
 
 
 ""-------------------------------------------------------------------------
-source ~/_vimrc_machinespecific.vim
+if filereadable("~/_vimrc_machinespecific.vim")
+    source ~/_vimrc_machinespecific.vim
+endif
 
 if has('win32')
     au GUIEnter * simalt ~x
