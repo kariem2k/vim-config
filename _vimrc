@@ -21,9 +21,12 @@ else
     Plug 'junegunn/fzf', { 'dir': fzf_dir, 'do': './install --all' }
 endif
 Plug 'junegunn/fzf.vim'
+Plug 'sheerun/vim-polyglot'
+Plug 'ctrlpvim/ctrlp.vim'
 Plug 'tpope/vim-fugitive'
 Plug 'vim-scripts/dbext.vim'
-Plug 'Lokaltog/powerline', {'rtp': 'powerline/bindings/vim/'}
+Plug 'powerline/powerline', {'rtp': 'powerline/bindings/vim/'}
+Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
 call plug#end()
 """
 " Customizations
@@ -56,10 +59,8 @@ syntax enable
 let s:uname = system("uname")
 if has("gui_gtk2")
     set guifont=UbuntuMono\ 10
-elseif has("gui_macvim")
-    set guifont=Powerline\ consolas:h10:cANSI
 elseif s:uname == "Darwin\n"
-    set guifont=Powerline\ consolas:h10:cANSI
+    set guifont=Inconsolata\ for\ Powerline:h15
 elseif has("gui_win32")
     set guifont=Powerline\ consolas:h10:cANSI
 end
@@ -259,4 +260,6 @@ endif
 
 if has('win32')
     au GUIEnter * simalt ~x
+elseif s:uname == "Darwin\n"
+    set lines=999 columns=9999
 endif

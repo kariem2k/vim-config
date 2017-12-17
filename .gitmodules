@@ -1,6 +1,3 @@
-[submodule "vimfiles/bundle/vim-polyglot"]
-	path = vimfiles/bundle/vim-polyglot
-	url = https://github.com/sheerun/vim-polyglot.git
-[submodule "vimfiles/bundle/ctrlp.vim"]
-	path = vimfiles/bundle/ctrlp.vim
-	url = https://github.com/ctrlpvim/ctrlp.vim.git
+[submodule "needsinstallingfirst/other/fonts"]
+	path = needsinstallingfirst/other/fonts
+	url = https://github.com/powerline/fonts.git
