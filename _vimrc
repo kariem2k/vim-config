@@ -25,7 +25,7 @@ Plug 'ctrlpvim/ctrlp.vim'
 Plug 'tpope/vim-fugitive'
 Plug 'vim-scripts/dbext.vim'
 Plug 'powerline/powerline', {'rtp': 'powerline/bindings/vim/'}
-if has('win32') --Disable it for now, on windows
+if has('win32') "Disable it for now, on windows
 	Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
 endif
 call plug#end()
