@@ -10,7 +10,6 @@ else
     let s:vim_files = expand('$HOME/.vim')
 endif
 
-
 execute pathogen#infect()
 call plug#begin(s:vim_files . '/plugged')
 let fzf_dir = s:vim_files . '/.fzf'
@@ -26,7 +25,9 @@ Plug 'ctrlpvim/ctrlp.vim'
 Plug 'tpope/vim-fugitive'
 Plug 'vim-scripts/dbext.vim'
 Plug 'powerline/powerline', {'rtp': 'powerline/bindings/vim/'}
-Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
+if has('win32') --Disable it for now, on windows
+	Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
+endif
 call plug#end()
 """
 " Customizations
