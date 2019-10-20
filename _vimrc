@@ -25,6 +25,7 @@ Plug 'ctrlpvim/ctrlp.vim'
 Plug 'tpope/vim-fugitive'
 Plug 'vim-scripts/dbext.vim'
 Plug 'powerline/powerline', {'rtp': 'powerline/bindings/vim/'}
+Plug 'NLKNguyen/papercolor-theme' 
 if has('win32') "Disable it for now, on windows
 	Plug 'Valloric/YouCompleteMe', { 'do': './install.py' }
 endif
@@ -251,7 +252,7 @@ if has('gui_running')
 else
     set background=dark
 endif
-colorscheme papercolor
+colorscheme PaperColor
 
 
 ""-------------------------------------------------------------------------
